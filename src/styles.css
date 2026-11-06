@@ -765,15 +765,12 @@ a {
   }
 }
 
-.project-layout-phones .project-full-gallery {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: clamp(12px, 3vw, 44px);
-}
-
 @media (min-width: 851px) {
   .project-layout-phones .project-full-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: clamp(12px, 3vw, 44px);
     margin-top: clamp(44px, 6vw, 90px);
   }
 }
@@ -870,12 +867,17 @@ a {
     object-position: 38% 0;
   }
 
-  .project-gbcc .project-carousel img:first-child {
-    object-position: 0 0;
+  .project-gbcc .project-carousel img {
+    height: calc(min(82vw, 520px) * 1.087);
+    object-fit: contain;
+    object-position: center;
   }
 
+  /* Extends the screenshot's own gradient into the space above and below it. */
   .project-gbcc .project-carousel img:last-child {
-    object-position: 78% 0;
+    background:
+      linear-gradient(90deg, #4d7ded, #7774dd, #9b69c9, #bd5bb4, #e04ea1) top / 100% 50% no-repeat,
+      linear-gradient(90deg, #577be9, #7e71d7, #a266c4, #c559b0, #e64a9d) bottom / 100% 50% no-repeat;
   }
 
   .project-siq .project-carousel {

@@ -1,4 +1,5 @@
 import React from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -182,6 +183,7 @@ function Header({ active }) {
       <nav className="site-nav" aria-label="Main navigation">
         <a
           className="nav-link"
+          data-label="Home"
           href="/"
           aria-current={active === "home" ? "page" : undefined}
         >
@@ -189,6 +191,7 @@ function Header({ active }) {
         </a>
         <a
           className="nav-link"
+          data-label="Works"
           href="/works"
           aria-current={active === "works" ? "page" : undefined}
         >
@@ -224,14 +227,47 @@ function Footer() {
 
 const formatIndex = (index) => String(index + 1).padStart(2, "0");
 
-function ProjectImage({ image, loading = "lazy" }) {
+const FULL_SIZES = "(max-width: 850px) 100vw, 88vw";
+const SIDE_SIZES = "(max-width: 850px) 100vw, 45vw";
+const PHONE_SIZES = "(max-width: 850px) 70vw, 28vw";
+
+function imageSrcSet(image) {
+  const base = image.src
+    .replace("/images/", "/images/optimized/")
+    .replace(/\.\w+$/, "");
+  const widths = [800, 1600, image.width].filter(
+    (width) => width <= image.width && width <= 1600,
+  );
+
+  return [...new Set(widths)]
+    .sort((a, b) => a - b)
+    .map((width) => `${base}-${width}.jpg ${width}w`)
+    .join(", ");
+}
+
+function ProjectImage({ image, loading = "lazy", sizes = FULL_SIZES }) {
+  const element = React.useRef(null);
+  const [loaded, setLoaded] = React.useState(false);
+
+  // Cached images can finish before React attaches onLoad.
+  React.useEffect(() => {
+    if (element.current.complete) setLoaded(true);
+  }, []);
+
   return (
     <img
+      ref={element}
+      className={loaded ? "is-loaded" : undefined}
       src={image.src}
+      srcSet={imageSrcSet(image)}
+      sizes={sizes}
       alt={image.alt}
       width={image.width}
       height={image.height}
       loading={loading}
+      decoding="async"
+      onLoad={() => setLoaded(true)}
+      onError={() => setLoaded(true)}
     />
   );
 }
@@ -298,7 +334,11 @@ function Project({ project, index }) {
           </div>
           {isMaisonCusi && (
             <div className="project-left-gallery">
-              <ProjectImage image={project.images[0]} />
+              <ProjectImage
+                image={project.images[0]}
+                loading={index === 0 ? "eager" : "lazy"}
+                sizes={SIDE_SIZES}
+              />
             </div>
           )}
         </div>
@@ -308,7 +348,8 @@ function Project({ project, index }) {
               <ProjectImage
                 key={image.src}
                 image={image}
-                loading={imageIndex === 0 ? "eager" : "lazy"}
+                loading={index === 0 && imageIndex === 0 ? "eager" : "lazy"}
+                sizes={SIDE_SIZES}
               />
             ))}
           </div>
@@ -316,7 +357,11 @@ function Project({ project, index }) {
         {fullWidthImages.length > 0 && (
           <div className="project-full-gallery">
             {fullWidthImages.map((image) => (
-              <ProjectImage key={image.src} image={image} />
+              <ProjectImage
+                key={image.src}
+                image={image}
+                sizes={project.phones ? PHONE_SIZES : FULL_SIZES}
+              />
             ))}
           </div>
         )}
@@ -380,7 +425,6 @@ function WorksNav() {
 function WorksPage() {
   return (
     <>
-      <Header active="works" />
       <WorksNav />
       <main className="works-page">
         {projects.map((project, index) => (
@@ -395,7 +439,6 @@ function WorksPage() {
 function HomePage() {
   return (
     <>
-      <Header active="home" />
       <main className="home-page">
         <section className="home-hero">
           <div className="hero-meta">
@@ -501,12 +544,78 @@ function HomePage() {
   );
 }
 
-const isWorksPage =
-  window.location.pathname === "/works" ||
-  window.location.pathname === "/about";
+const isWorksPath = (path) => path === "/works" || path === "/about";
 
-document.documentElement.classList.toggle("theme-works", isWorksPage);
+function App() {
+  const [path, setPath] = React.useState(window.location.pathname);
+  const currentPath = React.useRef(path);
+  const isWorks = isWorksPath(path);
+
+  React.useLayoutEffect(() => {
+    document.documentElement.classList.toggle("theme-works", isWorks);
+  }, [isWorks]);
+
+  React.useEffect(() => {
+    const showPage = (nextPath, resetScroll) => {
+      const update = () => {
+        currentPath.current = nextPath;
+        flushSync(() => setPath(nextPath));
+        if (resetScroll) window.scrollTo({ top: 0, behavior: "instant" });
+      };
+
+      if (document.startViewTransition) document.startViewTransition(update);
+      else update();
+    };
+
+    const handleClick = (event) => {
+      const link = event.target.closest("a");
+      const isPlainClick =
+        event.button === 0 &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey;
+
+      if (!link || !isPlainClick || link.target) return;
+      if (link.origin !== window.location.origin) return;
+      if (link.hash && link.pathname === window.location.pathname) return;
+
+      event.preventDefault();
+
+      if (link.pathname === window.location.pathname) {
+        window.scrollTo({ top: 0 });
+        return;
+      }
+
+      window.history.pushState(null, "", link.pathname);
+      showPage(link.pathname, true);
+    };
+
+    const handlePopState = () => {
+      if (window.location.pathname !== currentPath.current) {
+        showPage(window.location.pathname, false);
+      }
+    };
+
+    document.addEventListener("click", handleClick);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      document.removeEventListener("click", handleClick);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  return (
+    <>
+      <Header active={isWorks ? "works" : "home"} />
+      {isWorks ? <WorksPage /> : <HomePage />}
+    </>
+  );
+}
 
 createRoot(document.getElementById("root")).render(
-  <React.StrictMode>{isWorksPage ? <WorksPage /> : <HomePage />}</React.StrictMode>,
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
 );

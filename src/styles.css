@@ -83,13 +83,32 @@ a {
   letter-spacing: -0.02em;
   line-height: 1.5;
   text-transform: uppercase;
-  animation: header-in 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  view-transition-name: site-header;
 }
 
-@keyframes header-in {
+/* The bar never moves between pages: only its colors crossfade. */
+::view-transition-group(site-header) {
+  animation: none;
+}
+
+::view-transition-old(root) {
+  animation: page-out 200ms ease both;
+}
+
+::view-transition-new(root) {
+  animation: page-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(-100px);
+    transform: translateY(14px);
   }
 }
 
@@ -109,6 +128,19 @@ a {
   text-decoration: none;
 }
 
+/* Reserves the bold width so the active state never shifts the other links. */
+.nav-link[data-label] {
+  display: inline-grid;
+}
+
+.nav-link[data-label]::before {
+  height: 0;
+  content: attr(data-label);
+  font-weight: 700;
+  overflow: hidden;
+  visibility: hidden;
+}
+
 .nav-link[aria-current="page"] {
   font-weight: 700;
 }
@@ -118,8 +150,13 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-header {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
     animation: none;
+  }
+
+  .project img {
+    transition: none;
   }
 
   .works-nav,
@@ -127,6 +164,15 @@ a {
   .works-nav span {
     transition: none;
   }
+}
+
+.project img {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.project img.is-loaded {
+  opacity: 1;
 }
 
 .project-index,
@@ -396,7 +442,6 @@ a {
   display: block;
   width: 100%;
   height: auto;
-  background: white;
 }
 
 .project-full-gallery {
@@ -423,10 +468,6 @@ a {
   display: block;
   width: 100%;
   height: auto;
-}
-
-.project-gallery-2 img {
-  background: #232323;
 }
 
 .site-footer {

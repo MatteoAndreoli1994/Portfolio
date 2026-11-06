@@ -236,63 +236,6 @@ function ProjectImage({ image, loading = "lazy" }) {
   );
 }
 
-function ProjectCarousel({ project }) {
-  const scroller = React.useRef(null);
-  const [current, setCurrent] = React.useState(0);
-
-  const slideOffset = (slide) =>
-    slide.offsetLeft - scroller.current.children[0].offsetLeft;
-
-  const handleScroll = () => {
-    const element = scroller.current;
-    const slides = [...element.children];
-    const atEnd =
-      element.scrollLeft >= element.scrollWidth - element.clientWidth - 4;
-
-    if (atEnd) {
-      setCurrent(slides.length - 1);
-      return;
-    }
-
-    const distances = slides.map((slide) =>
-      Math.abs(slideOffset(slide) - element.scrollLeft),
-    );
-    setCurrent(distances.indexOf(Math.min(...distances)));
-  };
-
-  const goTo = (slideIndex) => {
-    scroller.current.scrollTo({
-      left: slideOffset(scroller.current.children[slideIndex]),
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <div className="project-carousel-wrap">
-      <div
-        className="project-carousel"
-        ref={scroller}
-        onScroll={handleScroll}
-      >
-        {project.images.map((image) => (
-          <ProjectImage key={image.src} image={image} />
-        ))}
-      </div>
-      <div className="carousel-dashes">
-        {project.images.map((image, imageIndex) => (
-          <button
-            key={image.src}
-            type="button"
-            aria-label={`Show image ${imageIndex + 1} of ${project.images.length}`}
-            aria-current={current === imageIndex ? "true" : undefined}
-            onClick={() => goTo(imageIndex)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function Project({ project, index }) {
   const isMaisonCusi = index === 0;
   let sideImages = project.images.slice(0, 1);
@@ -312,7 +255,6 @@ function Project({ project, index }) {
         <p className="project-year">{project.year}</p>
         <h2>{project.name}</h2>
       </div>
-      <ProjectCarousel project={project} />
       <div
         className={`project-layout project-layout-${index + 1}${
           project.phones ? " project-layout-phones" : ""

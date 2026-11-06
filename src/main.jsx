@@ -229,7 +229,8 @@ const formatIndex = (index) => String(index + 1).padStart(2, "0");
 
 const FULL_SIZES = "(max-width: 850px) 100vw, 88vw";
 const SIDE_SIZES = "(max-width: 850px) 100vw, 45vw";
-const PHONE_SIZES = "(max-width: 850px) 70vw, 28vw";
+const PHONE_SIZES = "28vw";
+const CAROUSEL_SIZES = "min(82vw, 520px)";
 
 function imageSrcSet(image) {
   const base = image.src
@@ -245,7 +246,7 @@ function imageSrcSet(image) {
     .join(", ");
 }
 
-function ProjectImage({ image, loading = "lazy", sizes = FULL_SIZES }) {
+function ProjectImage({ image, sizes = FULL_SIZES }) {
   const element = React.useRef(null);
   const [loaded, setLoaded] = React.useState(false);
 
@@ -264,11 +265,68 @@ function ProjectImage({ image, loading = "lazy", sizes = FULL_SIZES }) {
       alt={image.alt}
       width={image.width}
       height={image.height}
-      loading={loading}
+      loading="lazy"
       decoding="async"
       onLoad={() => setLoaded(true)}
       onError={() => setLoaded(true)}
     />
+  );
+}
+
+function ProjectCarousel({ project }) {
+  const scroller = React.useRef(null);
+  const [current, setCurrent] = React.useState(0);
+
+  const slideOffset = (slide) =>
+    slide.offsetLeft - scroller.current.children[0].offsetLeft;
+
+  const handleScroll = () => {
+    const element = scroller.current;
+    const slides = [...element.children];
+    const atEnd =
+      element.scrollLeft >= element.scrollWidth - element.clientWidth - 4;
+
+    if (atEnd) {
+      setCurrent(slides.length - 1);
+      return;
+    }
+
+    const distances = slides.map((slide) =>
+      Math.abs(slideOffset(slide) - element.scrollLeft),
+    );
+    setCurrent(distances.indexOf(Math.min(...distances)));
+  };
+
+  const goTo = (slideIndex) => {
+    scroller.current.scrollTo({
+      left: slideOffset(scroller.current.children[slideIndex]),
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="project-carousel-wrap">
+      <div
+        className="project-carousel"
+        ref={scroller}
+        onScroll={handleScroll}
+      >
+        {project.images.map((image) => (
+          <ProjectImage key={image.src} image={image} sizes={CAROUSEL_SIZES} />
+        ))}
+      </div>
+      <div className="carousel-dashes">
+        {project.images.map((image, imageIndex) => (
+          <button
+            key={image.src}
+            type="button"
+            aria-label={`Show image ${imageIndex + 1} of ${project.images.length}`}
+            aria-current={current === imageIndex ? "true" : undefined}
+            onClick={() => goTo(imageIndex)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -291,6 +349,7 @@ function Project({ project, index }) {
         <p className="project-year">{project.year}</p>
         <h2>{project.name}</h2>
       </div>
+      <ProjectCarousel project={project} />
       <div
         className={`project-layout project-layout-${index + 1}${
           project.phones ? " project-layout-phones" : ""
@@ -334,23 +393,14 @@ function Project({ project, index }) {
           </div>
           {isMaisonCusi && (
             <div className="project-left-gallery">
-              <ProjectImage
-                image={project.images[0]}
-                loading={index === 0 ? "eager" : "lazy"}
-                sizes={SIDE_SIZES}
-              />
+              <ProjectImage image={project.images[0]} sizes={SIDE_SIZES} />
             </div>
           )}
         </div>
         {sideImages.length > 0 && (
           <div className={`project-gallery project-gallery-${index + 1}`}>
-            {sideImages.map((image, imageIndex) => (
-              <ProjectImage
-                key={image.src}
-                image={image}
-                loading={index === 0 && imageIndex === 0 ? "eager" : "lazy"}
-                sizes={SIDE_SIZES}
-              />
+            {sideImages.map((image) => (
+              <ProjectImage key={image.src} image={image} sizes={SIDE_SIZES} />
             ))}
           </div>
         )}

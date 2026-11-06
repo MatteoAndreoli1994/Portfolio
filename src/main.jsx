@@ -222,6 +222,8 @@ function Footer() {
   );
 }
 
+const formatIndex = (index) => String(index + 1).padStart(2, "0");
+
 function ProjectImage({ image, loading = "lazy" }) {
   return (
     <img
@@ -231,6 +233,63 @@ function ProjectImage({ image, loading = "lazy" }) {
       height={image.height}
       loading={loading}
     />
+  );
+}
+
+function ProjectCarousel({ project }) {
+  const scroller = React.useRef(null);
+  const [current, setCurrent] = React.useState(0);
+
+  const slideOffset = (slide) =>
+    slide.offsetLeft - scroller.current.children[0].offsetLeft;
+
+  const handleScroll = () => {
+    const element = scroller.current;
+    const slides = [...element.children];
+    const atEnd =
+      element.scrollLeft >= element.scrollWidth - element.clientWidth - 4;
+
+    if (atEnd) {
+      setCurrent(slides.length - 1);
+      return;
+    }
+
+    const distances = slides.map((slide) =>
+      Math.abs(slideOffset(slide) - element.scrollLeft),
+    );
+    setCurrent(distances.indexOf(Math.min(...distances)));
+  };
+
+  const goTo = (slideIndex) => {
+    scroller.current.scrollTo({
+      left: slideOffset(scroller.current.children[slideIndex]),
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="project-carousel-wrap">
+      <div
+        className="project-carousel"
+        ref={scroller}
+        onScroll={handleScroll}
+      >
+        {project.images.map((image) => (
+          <ProjectImage key={image.src} image={image} />
+        ))}
+      </div>
+      <div className="carousel-dashes">
+        {project.images.map((image, imageIndex) => (
+          <button
+            key={image.src}
+            type="button"
+            aria-label={`Show image ${imageIndex + 1} of ${project.images.length}`}
+            aria-current={current === imageIndex ? "true" : undefined}
+            onClick={() => goTo(imageIndex)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -247,9 +306,13 @@ function Project({ project, index }) {
   return (
     <article id={project.theme} className={`project project-${project.theme}`}>
       <div className="project-heading">
+        <p className="project-index">
+          {formatIndex(index)} / {formatIndex(projects.length - 1)}
+        </p>
         <p className="project-year">{project.year}</p>
         <h2>{project.name}</h2>
       </div>
+      <ProjectCarousel project={project} />
       <div
         className={`project-layout project-layout-${index + 1}${
           project.phones ? " project-layout-phones" : ""
@@ -322,6 +385,8 @@ function Project({ project, index }) {
 
 function WorksNav() {
   const [active, setActive] = React.useState(projects[0].theme);
+  const [atFooter, setAtFooter] = React.useState(false);
+  const activeIndex = projects.findIndex(({ theme }) => theme === active);
 
   React.useEffect(() => {
     // A zero-height band at mid-viewport: the project crossing it is the current one.
@@ -338,11 +403,25 @@ function WorksNav() {
       observer.observe(document.getElementById(project.theme));
     });
 
-    return () => observer.disconnect();
+    const footerObserver = new IntersectionObserver(([entry]) => {
+      setAtFooter(entry.isIntersecting);
+    });
+    footerObserver.observe(document.querySelector(".site-footer"));
+
+    return () => {
+      observer.disconnect();
+      footerObserver.disconnect();
+    };
   }, []);
 
   return (
-    <nav className={`works-nav project-${active}`} aria-label="Projects">
+    <nav
+      className={`works-nav project-${active}${atFooter ? " is-at-footer" : ""}`}
+      aria-label="Projects"
+    >
+      <p className="works-nav-current">
+        {formatIndex(activeIndex)} {projects[activeIndex].name}
+      </p>
       {projects.map((project) => (
         <a
           key={project.theme}
